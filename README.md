@@ -4,7 +4,7 @@
 ## 准备
 在[腾讯云api](https://console.cloud.tencent.com/lkeap/api)申请deepseek的api（腾讯云deepseek的api限时免费），或者其他平台的deepseek的api
 
-### 安装
+### 准备
 安装好XUnity.AutoTranslator和python，
 
 还需要安装：`pip install Flask` ；
@@ -31,14 +31,18 @@ Model_Type =  "deepseek-v3"    # 使用的模型类型，可选项包括"deepsee
 ```
 ## 启动
 1.确保python脚本启动
+· 出现`服务器在 http://127.0.0.1:4000 上启动`
 
 2.更改XUnity.AutoTranslator插件的AutoTranslatorConfig.ini或者Config.ini文件 
 
-`[Service]
+`
+[Service]
+
 Endpoint=CustomTranslate
 `
 
 `[Custom]
+
 Url=http://127.0.0.1:4000/translate
 `
 
