@@ -19,7 +19,7 @@ pip install Flask gevent openai
 ```
 
 ### 3. 配置API
-克隆本项目后，修改deepseek.py中的`api_key`配置部分：
+克隆本项目后，修改deepseekv3.py中的`api_key`配置部分：
 ```python
 client = OpenAI(
     api_key="sk-XXXXXXXXXXXXXXXXXXXXXX",  # 替换为您的API密钥
