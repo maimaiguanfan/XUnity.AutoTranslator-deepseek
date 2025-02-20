@@ -1,50 +1,61 @@
 # XUnity.AutoTranslator-deepseek
-调用腾讯的deep seek v3进行Unity游戏日文文本翻译
 
-## 准备
-在[腾讯云api](https://console.cloud.tencent.com/lkeap/api)申请deepseek的api（腾讯云deepseek的api限时免费），或者其他平台的deepseek的api
+本项目通过调用腾讯的DeepSeek V3 API，实现Unity游戏中日文文本的自动翻译。
 
-### 准备
-安装好XUnity.AutoTranslator和python，
+## 准备工作
 
-还需要安装：`pip install Flask` ；
+### 1. 获取API密钥
+- 访问[腾讯云API控制台](https://console.cloud.tencent.com/lkeap/api)申请DeepSeek的API密钥（限时免费）。
+- 也可以使用其他平台提供的DeepSeek API。
 
-还需要安装：`pip install gevent`；
+### 2. 安装依赖
+确保已安装以下软件和库：
+- **XUnity.AutoTranslator**
+- **Python 3.x**
 
-还需要安装：`pip install openai`。
-
-克隆本项目之后，修改其中的api
+安装必要的Python库：
+```bash
+pip install Flask gevent openai
 ```
+
+### 3. 配置API
+克隆本项目后，修改`api`配置部分：
+```python
 client = OpenAI(
-    api_key="sk-XXXXXXXXXXXXXXXXXXXXXX",  # API 密钥，请替换为您自己的 API Key。如何获取 API Key 的指南：https://cloud.tencent.com/document/product/1772/115970
-    base_url=Base_url, # API 请求基础 URL，设置为上面配置的 Base_url
+    api_key="sk-XXXXXXXXXXXXXXXXXXXXXX",  # 替换为您的API密钥
+    base_url=Base_url,  # API请求基础URL
 )
 ```
 
-
-如果你使用的是其他云厂商提供的api和模型，请自行修改Base_url 和 Model_Type 
+### 4. 自定义API配置
+如果使用其他云厂商的API和模型，请修改以下配置：
+```python
+# API配置参数
+Base_url = "https://api.lkeap.cloud.tencent.com/v1"  # OpenAI API请求地址
+Model_Type = "deepseek-v3"  # 使用的模型类型
 ```
-# API 配置参数
-Base_url = "https://api.lkeap.cloud.tencent.com/v1"    # OpenAI API 请求地址，这里使用了腾讯云的 API 代理服务
-Model_Type =  "deepseek-v3"    # 使用的模型类型，可选项包括"deepseek-v3" 或者其他模型
 
+## 启动项目
+
+### 1. 启动Python脚本
+确保Python脚本成功启动，命令行应显示：
 ```
-## 启动
-1.确保python脚本启动
-· 出现`服务器在 http://127.0.0.1:4000 上启动`
+服务器在 http://127.0.0.1:4000 上启动
+```
 
-2.更改XUnity.AutoTranslator插件的AutoTranslatorConfig.ini或者Config.ini文件 
-
-`
+### 2. 配置XUnity.AutoTranslator
+修改XUnity.AutoTranslator插件的配置文件`AutoTranslatorConfig.ini`或`Config.ini`：
+```ini
 [Service]
-
 Endpoint=CustomTranslate
-`
 
-`[Custom]
-
+[Custom]
 Url=http://127.0.0.1:4000/translate
-`
+```
 
-### 参考项目链接
-`https://github.com/as176590811/XUnity.AutoTranslator-Sakura`
+## 参考项目
+- [XUnity.AutoTranslator-Sakura](https://github.com/as176590811/XUnity.AutoTranslator-Sakura)
+
+---
+
+通过以上步骤，您可以轻松实现Unity游戏中日文文本的自动翻译。如有问题，请参考相关文档或联系开发者。
