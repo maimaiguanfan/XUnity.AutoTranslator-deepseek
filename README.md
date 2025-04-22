@@ -8,19 +8,19 @@
 - **采用流式接收文案，防止说完就撤回。**
 - **自动识别文案是否被云服务商和谐。**
 - **支持文案被和谐后自动更换云服务商重试。**
-- 支持[腾讯云DeepSeek V3]((https://console.cloud.tencent.com/lkeap/api))和[原版DeepSeek V3](https://platform.deepseek.com/)。
+- 支持[腾讯云DeepSeek V3](https://console.cloud.tencent.com/lkeap/api)和[原版DeepSeek V3](https://platform.deepseek.com/)。
 - 不完全支持[阿里云DeepSeek V3](https://bailian.console.aliyun.com/?tab=model#/api-key)**（未充分测试）**。
 - 优化标点符号预处理。
 - 删去对译文的重复文字检查功能。
 - 删去对译文的日文字符检查功能。
 - 调整模型参数。
 
-个人推荐翻译顺序按首次用腾讯云，第二三次用原版DeepSeek。
+个人推荐翻译顺序按首次用腾讯云，第二、三次用原版DeepSeek。
 
 ## 准备工作
 
 ### 1. 获取API密钥
-- 访问腾讯云API控制台或DeepSeek开放平台申请DeepSeek的API密钥。
+- 访问[腾讯云API控制台](https://console.cloud.tencent.com/lkeap/api)或[DeepSeek开放平台](https://platform.deepseek.com/)申请DeepSeek的API密钥。
 - 也可以使用其他平台提供的DeepSeek API。
 
 ### 2. 安装依赖
