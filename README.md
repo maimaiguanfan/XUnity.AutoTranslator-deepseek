@@ -13,7 +13,7 @@
 - 优化标点符号预处理。
 - 删去对译文的重复文字检查功能。
 - 删去对译文的日文字符检查功能。
-- 调整模型参数。
+- 调整模型参数，语言更多样、更华丽，但少数可能有不太符合常识的词出现。
 
 个人推荐翻译顺序按首次用腾讯云，第二、三次用原版DeepSeek。
 
@@ -28,11 +28,13 @@
 - **XUnity.AutoTranslator**
 - **Python 3.x**
 
-安装必要的Python库（Ubuntu24.04）：
+安装必要的Python库：
+
+Ubuntu24.04
 ```bash
 sudo apt install python3-flask python3-gevent python3-openai
 ```
-安装必要的Python库（其他）：
+其他
 ```bash
 pip install Flask gevent openai
 ```
