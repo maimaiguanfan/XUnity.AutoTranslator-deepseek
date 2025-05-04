@@ -259,7 +259,7 @@ def main():
     """
     主函数，启动 Flask 应用和 gevent 服务器。
     """
-    print("\033[33m翻译服务在 http://127.0.0.1:4000/translate 上启动\033[0m") # 打印服务器启动信息，提示用户访问地址
+    print("\033[33m[服务启动]翻译服务在 http://127.0.0.1:4000/translate 上启动\n\033[0m") # 打印服务器启动信息，提示用户访问地址
     http_server = WSGIServer(('127.0.0.1', 4000), app, log=None, error_log=None) # 创建 gevent WSGIServer 实例，监听 127.0.0.1:4000 端口，使用 Flask app 处理请求，禁用访问日志和错误日志 (log=None, error_log=None)
     http_server.serve_forever() # 启动 gevent 服务器，无限循环运行，等待和处理客户端请求
 

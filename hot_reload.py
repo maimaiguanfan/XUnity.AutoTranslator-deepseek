@@ -17,7 +17,7 @@ class DictionaryManager:
         """加载或重新加载字典"""
         try:
             if not self.dict_path.exists():
-                print(f"\033[33m警告：字典文件 {self.dict_path} 未找到\033[0m")
+                print(f"\033[33m[配置重载]警告：dictionary文件 {self.dict_path} 未找到\033[0m")
                 return {}
                 
             current_modified = self.dict_path.stat().st_mtime
@@ -28,7 +28,7 @@ class DictionaryManager:
                 new_dict = json.load(f)
                 
             if not isinstance(new_dict, dict):
-                print(f"\033[31m错误：字典文件 {self.dict_path} 不是有效的JSON对象\033[0m")
+                print(f"\033[31m[配置重载]错误：dictionary文件 {self.dict_path} 不是有效的JSON对象\033[0m")
                 return
                 
             # 按key长度降序排序
@@ -41,12 +41,12 @@ class DictionaryManager:
                 self.dictionary = sorted_dict
                 self.last_modified = current_modified
                 
-            print(f"\033[33m字典已重新加载，共 {len(sorted_dict)} 条记录\033[0m")
+            print(f"\033[33m[配置重载]dictionary已重新加载，修改时间: {time.ctime(current_modified)}，共 {len(sorted_dict)} 条记录\033[0m")
             
         except json.JSONDecodeError:
-            print(f"\033[31m错误：字典文件 {self.dict_path} JSON格式错误\033[0m")
+            print(f"\033[31m[配置重载]错误：dictionary文件 {self.dict_path} JSON格式错误\033[0m")
         except Exception as e:
-            print(f"\033[31m读取字典文件时发生错误: {e}\033[0m")
+            print(f"\033[31m[配置重载]读取dictionary文件时发生错误: {e}\033[0m")
             
     def get_dict_matches(self, text):
         """获取匹配的字典条目"""
@@ -75,7 +75,7 @@ class DictionaryManager:
                 
         watcher_thread = threading.Thread(target=watch, daemon=True)
         watcher_thread.start()
-        print(f"\033[33m字典文件监视器已启动，每 {interval} 秒检查一次更新\033[0m")
+        print(f"\033[33m[配置重载]dictionary文件监视器已启动，每 {interval} 秒检查一次更新\033[0m")
     pass
 
 class ConfigManager:
@@ -87,7 +87,7 @@ class ConfigManager:
         self.load_config()
         
     def load_config(self) -> Optional[Dict[str, Any]]:
-        """加载或重新加载配置文件"""
+        """加载或重新加载config文件"""
         try:
             if not self.config_path.exists():
                 raise FileNotFoundError(f"Config file {self.config_path} not found")
@@ -109,22 +109,22 @@ class ConfigManager:
                 self.config = new_config
                 self.last_modified = current_modified
                 
-            print(f"\033[33m配置已重新加载，修改时间: {time.ctime(current_modified)}\033[0m")
+            print(f"\033[33m[配置重载]config已重新加载，修改时间: {time.ctime(current_modified)}\033[0m")
             return new_config
             
         except json.JSONDecodeError:
-            print(f"\033[31m错误：配置文件 {self.config_path} JSON格式错误\033[0m")
+            print(f"\033[31m[配置重载]错误：config文件 {self.config_path} JSON格式错误\033[0m")
         except Exception as e:
-            print(f"\033[31m读取配置文件时发生错误: {e}\033[0m")
+            print(f"\033[31m[配置重载]读取config文件时发生错误: {e}\033[0m")
         return None
             
     def get_config(self) -> Dict[str, Any]:
-        """获取当前配置"""
+        """获取当前config"""
         with self.lock:
             return self.config.copy()
             
     def update_clients(self, clients: Dict[str, Any], model_types: Dict[str, Any]) -> bool:
-        """更新API客户端配置"""
+        """更新API客户端config"""
         try:
             config = self.get_config()
             if 'api_keys' not in config:
@@ -166,11 +166,11 @@ class ConfigManager:
             return True
             
         except Exception as e:
-            print(f"\033[31m更新API客户端配置失败: {e}\033[0m")
+            print(f"\033[31m[配置重载]更新API客户端config失败: {e}\033[0m")
             return False
 
     def start_watcher(self, interval: int = 5):
-        """启动配置文件监视器"""
+        """启动config文件监视器"""
         def watch():
             while True:
                 self.load_config()
@@ -178,4 +178,4 @@ class ConfigManager:
                 
         watcher_thread = threading.Thread(target=watch, daemon=True)
         watcher_thread.start()
-        print(f"\033[33m配置文件监视器已启动，每 {interval} 秒检查一次更新\033[0m")
+        print(f"\033[33m[配置重载]config文件监视器已启动，每 {interval} 秒检查一次更新\033[0m")
