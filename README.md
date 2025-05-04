@@ -68,7 +68,7 @@ git update-index --assume-unchanged config.json
 #### 3.3 配置额外提示词
 这部分会随着主提示词一起发送给AI。你可以填写任何你想和AI说的，例如游戏包含的角色风格、翻译的格式例外。
 ```json
-  "prompt_user": "格式例外：无",
+  "prompt_user": "格式例外：XXXXXX",
 ```
 #### 3.4 配置字典路径
 字典路径`dict_path`，建议字典仅用于固定人名、技能名称、物品名称，剩下交给AI自由发挥。
@@ -79,9 +79,17 @@ git update-index --assume-unchanged config.json
 ## 启动项目
 
 ### 1. 启动Python脚本
-确保Python脚本成功启动，命令行应显示：
+运行方式：
+```bash
+python deepseekv3.py
+```
+正确运行时命令行应显示：
 ```text
-翻译服务在 http://127.0.0.1:4000/translate 上启动
+[配置重载]config已重新加载，修改时间: xxx xxx
+[配置重载]config文件监视器已启动，每 5 秒检查一次更新
+[配置重载]dictionary已重新加载，修改时间: xxx xxx，共 xxx 条记录
+[配置重载]dictionary文件监视器已启动，每 5 秒检查一次更新
+[服务启动]翻译服务在 http://127.0.0.1:4000/translate 上启动
 ```
 
 ### 2. 配置XUnity.AutoTranslator
