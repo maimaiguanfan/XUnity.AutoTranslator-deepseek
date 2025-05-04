@@ -106,45 +106,71 @@ prompt_dict0='''翻译中使用以下字典，格式为{\'原文\':\'译文\'}''
 app = Flask(__name__) # 创建 Flask 应用实例
 
 # 读取提示字典
-prompt_dict= {} # 初始化提示字典为空字典
-if dict_path: # 检查是否配置了字典路径
-    try:
-        with open(dict_path, 'r', encoding='utf8') as f: # 尝试打开字典文件
-            tempdict = json.load(f) # 加载 JSON 字典数据
-            # 按照字典 key 的长度从长到短排序，确保优先匹配长 key，避免短 key 干扰长 key 的匹配
-            sortedkey = sorted(tempdict.keys(), key=lambda x: len(x), reverse=True)
-            for i in sortedkey:
-                prompt_dict[i] = tempdict[i] # 将排序后的字典数据存入 prompt_dict
-    except FileNotFoundError:
-        print(f"\033[33m警告：字典文件 {dict_path} 未找到。\033[0m") # 警告用户字典文件未找到
-    except json.JSONDecodeError:
-        print(f"\033[31m错误：字典文件 {dict_path} JSON 格式错误，请检查字典文件。\033[0m") # 错误提示 JSON 格式错误
-    except Exception as e:
-        print(f"\033[31m读取字典文件时发生未知错误: {e}\033[0m") # 捕获其他可能的文件读取或 JSON 解析错误
-
-# 获得文本中包含的字典词汇
-def get_dict(text):
+def load_dictionary(dict_path):
     """
-    从文本中提取出在提示字典 (prompt_dict) 中存在的词汇及其翻译。
-
+    优化后的字典加载函数
+    
     Args:
-        text (str): 待处理的文本。
-
+        dict_path (str): 字典文件路径
+        
     Returns:
-        dict: 一个字典，key 为在文本中找到的字典原文，value 为对应的译文。
-              如果文本中没有找到任何字典词汇，则返回空字典。
+        dict: 按key长度降序排列的字典，如果文件不存在或无效则返回空字典
     """
-    res={} # 初始化结果字典
-    for key in prompt_dict.keys(): # 遍历提示字典中的所有原文 (key)
-        if key in text: # 检查当前原文 (key) 是否出现在待处理文本中
-            res.update({key:prompt_dict[key]}) # 如果找到，则将该原文及其译文添加到结果字典中
-            text=text.replace(key,'')   # 从文本中移除已匹配到的字典原文，避免出现长字典包含短字典导致重复匹配的情况。
-                                        # 例如，字典中有 "技能" 和 "技能描述" 两个词条，如果先匹配到 "技能描述"，
-                                        # 则将文本中的 "技能描述" 替换为空，后续就不会再匹配到 "技能" 了。
-        if text=='': # 如果文本在替换过程中被清空，说明所有文本内容都已被字典词汇覆盖，提前结束循环
-            break
-    return res # 返回提取到的字典词汇和译文
+    if not dict_path:
+        return {}
+    
+    try:
+        with open(dict_path, 'r', encoding='utf8') as f:
+            dictionary = json.load(f)
+            
+            # 验证字典格式
+            if not isinstance(dictionary, dict):
+                raise ValueError("Dictionary is not a valid JSON object")
+                
+            # 一次性排序并创建新字典
+            return {
+                k: dictionary[k] 
+                for k in sorted(dictionary.keys(), key=len, reverse=True)
+            }
+            
+    except FileNotFoundError:
+        print(f"\033[33m警告：字典文件 {dict_path} 未找到，将不使用字典。\033[0m")
+        return {}
+    except json.JSONDecodeError:
+        print(f"\033[31m错误：字典文件 {dict_path} JSON 格式错误，请检查字典文件。\033[0m")
+        return {}
+    except Exception as e:
+        print(f"\033[31m读取字典文件时发生未知错误: {e}\033[0m")
+        return {}
 
+# 初始化字典（在程序启动时加载一次）
+prompt_dict = load_dictionary(dict_path)
+
+def get_dict_matches(text):
+    """
+    优化后的字典匹配函数
+    
+    Args:
+        text (str): 待匹配的文本
+        
+    Returns:
+        dict: 匹配到的字典条目 {原文: 译文}
+    """
+    if not prompt_dict:
+        return {}
+    
+    matches = {}
+    remaining_text = text
+    
+    # 遍历已排序的字典keys
+    for key in prompt_dict:
+        if key in remaining_text:
+            matches[key] = prompt_dict[key]
+            remaining_text = remaining_text.replace(key, '')
+            if not remaining_text:
+                break
+                
+    return matches
 
 request_queue = Queue()  # 创建请求队列，用于异步处理翻译请求。使用队列可以避免请求处理阻塞主线程，提高服务器响应速度
 
@@ -292,7 +318,7 @@ def handle_translation(text, translation_queue):
     # 3. 构建提示词
     # 遍历提示词列表，尝试使用不同的提示词进行翻译
     prompt = prompt0 + prompt_user
-    dict_inuse = get_dict(text) # 再次获取字典词汇 (虽然此处重复获取，但逻辑上为了保证每次循环都重新获取一次字典是更严谨的)
+    dict_inuse = get_dict_matches(text) # 再次获取字典词汇 (虽然此处重复获取，但逻辑上为了保证每次循环都重新获取一次字典是更严谨的)
     if dict_inuse: # 如果获取到字典词汇，则将字典提示词和字典内容添加到当前提示词中，引导模型使用字典进行翻译
         prompt += prompt_dict0 + "\n" + str(dict_inuse) + "\n"
     prompt += prompt_end
