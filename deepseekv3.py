@@ -16,21 +16,24 @@ os.system('')
 
 # Load configuration from config.json
 def load_config():
+    """安全加载配置文件"""
     try:
         with open('config.json', 'r', encoding='utf8') as f:
             config = json.load(f)
         
-        # Validate required configurations
-        required_keys = ['api_keys', 'api_priority']
-        for key in required_keys:
-            if key not in config:
-                raise ValueError(f"Missing required configuration: {key}")
+        # 参数验证
+        required_sections = ['api_keys', 'model_params', 'api_priority']
+        for section in required_sections:
+            if section not in config:
+                raise ValueError(f"Missing required section: {section}")
                 
         return config
     except FileNotFoundError:
         raise FileNotFoundError("config.json file not found. Please create one.")
     except json.JSONDecodeError:
         raise ValueError("Invalid JSON format in config.json")
+    except Exception as e:
+        print(f"\033[31m配置加载错误: {str(e)}\033[0m")
 
 # Load configurations
 try:
@@ -82,11 +85,6 @@ try:
 except Exception as e:
     print(f"\033[31mError initializing API clients: {str(e)}\033[0m")
     exit(1)
-
-# 模型参数指定
-model_temperature = 1.2 # 取值范围[0,2]，增大会使模型选择一些选择概率较低的词，增加文本的创意性和多样性。降低会使文本更稳定可被预测
-model_max_tokens = 0  # 限制模型输出token的最大数量，避免模型生成过长文本浪费token。设置为0则自动控制为2倍原文长度（日译中平均只有原文的0.7倍）。也可手动限制，手动模式不建议低于300。
-model_top_p = 0.8  # 取值范围(0,1]，限制候选token的范围，仅考虑累积概率最高的 top_p 部分 token，进一步约束模型输出，提高生成质量
 
 # 提示词 (Prompt) 配置
 prompt0='''
@@ -323,15 +321,24 @@ def handle_translation(text, translation_queue):
         prompt += prompt_dict0 + "\n" + str(dict_inuse) + "\n"
     prompt += prompt_end
 
-    # 4. 计算token限制
-    limited_token_num = model_max_tokens if model_max_tokens else max(2 * len(text), 30)
+    # 4. 动态计算token限制
+    token_limit_ratio = config['model_params']['token_limit_ratio']
+    min_tokens = config['model_params'].get('min_tokens', 30)
+    max_tokens = config['model_params']['max_tokens']
+    max_auto_tokens = config['model_params'].get('max_auto_tokens', 500)
+    text_length = len(text)
+    current_tokens = max(int(text_length * token_limit_ratio), min_tokens)
+    token_limit = (
+        max_tokens if max_tokens > 0
+        else min(current_tokens, max_auto_tokens)
+    )
     
     # 5. 基础模型参数
     base_params = {
         "stream": True,
-        "temperature": model_temperature,
-        "max_tokens": limited_token_num,
-        "top_p": model_top_p,
+        "temperature": config['model_params']['temperature'],
+        "max_tokens": token_limit,
+        "top_p": config['model_params']['top_p'],
         "messages": [
             {"role": "system", "content": prompt},
             {"role": "user", "content": text}
@@ -340,7 +347,7 @@ def handle_translation(text, translation_queue):
 
     print("\033[36m[提示词]\033[0m", end='')
     print(f"{prompt}") # 打印提示词和翻译结果 (调试或日志记录用)
-    print(f"\033[36m[发送文本][limited_token_num = {limited_token_num}]\033[0m")
+    print(f"\033[36m[发送文本][token_limit = {token_limit}]\033[0m")
     print(f"{text}") # 打印提示词和翻译结果 (调试或日志记录用)
     
     # 6. 重试机制
