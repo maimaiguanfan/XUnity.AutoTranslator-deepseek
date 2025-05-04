@@ -418,6 +418,16 @@ def handle_translation(text, translation_queue):
                     current_translation = "数据检查错误，输入或者输出包含疑似敏感内容被云服务商拦截。"
             else:
                 raise e
+        
+        except openai.RateLimitError as e:
+            print(f"\033[31m[限流错误] {str(e)}\033[0m")
+            time.sleep(2 ** block_retry_count)  # 指数退避
+            continue
+        
+        except openai.APIConnectionError as e:
+            print(f"\033[31m[连接错误] {str(e)}\033[0m")
+            if "SSL" in str(e):
+                return "SSL证书验证失败，请检查系统时间"
 
         except Exception as e:
             retries += 1
