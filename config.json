@@ -16,7 +16,7 @@
       "model_type": "deepseek-chat"
     }
   },
-  "api_priority": ["TENCENT", "DEEPSEEK", "DEEPSEEK"],
+  "api_priority": ["tencent", "deepseek", "deepseek"],
   "prompt_user": "格式例外：无",
   "dict_path": "./dictionary.json"
 }
