@@ -16,6 +16,14 @@
       "model_type": "deepseek-chat"
     }
   },
+  "model_params": {
+    "temperature": 1.2,
+    "max_tokens": 0,
+    "min_tokens": 30,
+    "max_auto_tokens": 500,
+    "token_limit_ratio": 2.0,
+    "top_p": 0.8
+  },
   "api_priority": ["tencent", "deepseek", "deepseek"],
   "prompt_user": "格式例外：无",
   "dict_path": "./dictionary.json"
