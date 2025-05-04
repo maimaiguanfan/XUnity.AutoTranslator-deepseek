@@ -139,28 +139,19 @@ def get_dict(text):
 
 request_queue = Queue()  # 创建请求队列，用于异步处理翻译请求。使用队列可以避免请求处理阻塞主线程，提高服务器响应速度
 
-def handle_translation(text, translation_queue):
-    """流式翻译处理（兼容腾讯云/阿里云/原版DeepSeek的敏感拦截，新增字典/多提示词/特殊字符处理）"""
-    text = unquote(text)
-
-    # 初始化变量
-    max_retries = 3
-    retries = 0
-    final_translation = ""
-	
-    # 定义需要处理的符号对
+def handle_paired_symbols(text):
+    """检测并去除成对符号"""
     PAIRS_TO_CHECK = [
         ("「", "」"),  # 鉤括弧
         ("『", "』"),  # 二重鉤括弧
         ("（", "）"),  # 圆括号
         ("\"", "\""),  # 英文引号（特殊处理）
         ("(", ")"),   # 英文括号
-        ("“", "”")    # 中文引号
+        (""", """)    # 中文引号
     ]
-
-    # 存储被去除的符号（按顺序）
+    
     removed_symbols = []
-    # 循环检测并去除符号
+    
     while True:
         removed = False
         # 优先检查成对符号（开头和结尾刚好是一对）
@@ -172,6 +163,7 @@ def handle_translation(text, translation_queue):
                 break
         if removed:
             continue
+            
         # 检查开头单边符号（英文引号特殊处理）
         for start_char, end_char in PAIRS_TO_CHECK:
             if text.startswith(start_char):
@@ -192,6 +184,7 @@ def handle_translation(text, translation_queue):
                         removed_symbols.append(("start", start_char))
                         removed = True
                         break
+                        
         # 检查结尾单边符号（英文引号特殊处理）
         for start_char, end_char in PAIRS_TO_CHECK:
             if text.endswith(end_char):
@@ -212,28 +205,80 @@ def handle_translation(text, translation_queue):
                         removed_symbols.append(("end", end_char))
                         removed = True
                         break
+                        
         if not removed:
             break
     
-    # 句首句末标点处理
+    return text, removed_symbols
+
+def remove_text_special_chars(text):
+    """检查并去除句首句末特殊符号"""
     special_chars = [
         '，', '。', '？', '！', '、', '…', '—', '~', '～',
         ',', '.', '?', '!', ' ', '♡'
-    ] # 定义标点列表，用于标点符号的对齐和修正
+    ]
+    
     # 处理文本开头的标点
     text_start_special_chars = []
-    # 从前往后检查所有连续的标点
     i = 0
     while i < len(text) and text[i] in special_chars:
-        text_start_special_chars.append(text[i])  # 添加到列表末尾以保持原始顺序
+        text_start_special_chars.append(text[i])
         i += 1
+        
     # 处理文本末尾的标点
     text_end_special_chars = []
-    # 从后往前检查所有连续的标点
     i = len(text) - 1
     while i >= 0 and text[i] in special_chars:
-        text_end_special_chars.insert(0, text[i])  # 添加到列表开头以保持原始顺序
+        text_end_special_chars.insert(0, text[i])
         i -= 1
+        
+    # 去除开头和结尾的标点
+    if text_start_special_chars:
+        text = text[len(text_start_special_chars):]
+    if text_end_special_chars:
+        text = text[:-len(text_end_special_chars)]
+        
+    return text, text_start_special_chars, text_end_special_chars
+
+def restore_text_special_chars(text, text_start_special_chars, text_end_special_chars):
+    """还原句首句末特殊符号"""
+    # 添加原始文本的开头标点
+    if text_start_special_chars:
+        text = ''.join(text_start_special_chars) + text
+    # 添加原始文本的末尾标点
+    if text_end_special_chars:
+        text = text + ''.join(text_end_special_chars)
+    return text
+
+def restore_paired_symbols(text, removed_symbols):
+    """还原成对符号"""
+    # 按相反顺序重新添加符号
+    for symbol_info in reversed(removed_symbols):
+        if symbol_info[0] == "pair":
+            _, start_char, end_char = symbol_info
+            text = start_char + text + end_char
+        elif symbol_info[0] == "start":
+            _, char = symbol_info
+            text = char + text
+        else:  # "end"
+            _, char = symbol_info
+            text = text + char
+    return text
+
+def handle_translation(text, translation_queue):
+    """流式翻译处理（兼容腾讯云/阿里云/原版DeepSeek的敏感拦截，新增字典/多提示词/特殊字符处理）"""
+    text = unquote(text)
+
+    # 初始化变量
+    max_retries = 3
+    retries = 0
+    final_translation = ""
+	
+    # 处理成对符号
+    text, removed_symbols = handle_paired_symbols(text)
+
+    # 处理句首句末标点
+    text, text_start_special_chars, text_end_special_chars = remove_text_special_chars(text)
     
     # 遍历提示词列表，尝试使用不同的提示词进行翻译
     prompt = prompt0 + prompt_user
@@ -341,43 +386,15 @@ def handle_translation(text, translation_queue):
             if not current_translation:
                 raise ValueError("空响应")
             
-            # 句首句末标点处理
-            # 处理翻译结果的开头标点
-            translation_start_special_chars = []
-            i = 0
-            while i < len(current_translation) and current_translation[i] in special_chars:
-                translation_start_special_chars.append(current_translation[i])
-                i += 1
-            # 处理翻译结果的末尾标点
-            translation_end_special_chars = []
-            i = len(current_translation) - 1
-            while i >= 0 and current_translation[i] in special_chars:
-                translation_end_special_chars.insert(0, current_translation[i])
-                i -= 1
-            # 移除翻译结果现有的开头和结尾标点
-            if translation_start_special_chars:
-                current_translation = current_translation[len(translation_start_special_chars):]
-            if translation_end_special_chars:
-                current_translation = current_translation[:-len(translation_end_special_chars)]
-            # 添加原始文本的开头标点
-            if text_start_special_chars:
-                current_translation = ''.join(text_start_special_chars) + current_translation
-            # 添加原始文本的末尾标点
-            if text_end_special_chars:
-                current_translation = current_translation + ''.join(text_end_special_chars)
+            # 还原句首句末标点
+            current_translation = restore_text_special_chars(
+                current_translation, 
+                text_start_special_chars, 
+                text_end_special_chars
+            )
             
-            # 引号处理
-            # 按相反顺序重新添加符号
-            for symbol_info in reversed(removed_symbols):
-                if symbol_info[0] == "pair":
-                    _, start_char, end_char = symbol_info
-                    current_translation = start_char + current_translation + end_char
-                elif symbol_info[0] == "start":
-                    _, char = symbol_info
-                    current_translation = char + current_translation
-                else:  # "end"
-                    _, char = symbol_info
-                    current_translation = current_translation + char
+            # 还原成对符号
+            current_translation = restore_paired_symbols(current_translation, removed_symbols)
 
         except openai.BadRequestError as e:
             if "data_inspection_failed" in str(e):
