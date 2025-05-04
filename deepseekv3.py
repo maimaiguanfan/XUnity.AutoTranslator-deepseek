@@ -48,30 +48,30 @@ def initialize_clients(api_keys):
     clients = {}
     try:
         if 'tencent' in api_keys:
-            clients['TENCENT'] = OpenAI(
+            clients['tencent'] = OpenAI(
                 api_key=api_keys['tencent']['api_key'],
                 base_url=api_keys['tencent']['base_url']
             )
             Model_Type_tencent = api_keys['tencent']['model_type']
         
         if 'ali' in api_keys:
-            clients['ALI'] = OpenAI(
+            clients['ali'] = OpenAI(
                 api_key=api_keys['ali']['api_key'],
                 base_url=api_keys['ali']['base_url']
             )
             Model_Type_ali = api_keys['ali']['model_type']
         
         if 'deepseek' in api_keys:
-            clients['DEEPSEEK'] = OpenAI(
+            clients['deepseek'] = OpenAI(
                 api_key=api_keys['deepseek']['api_key'],
                 base_url=api_keys['deepseek']['base_url']
             )
             Model_Type_deepseek = api_keys['deepseek']['model_type']
             
         return clients, {
-            'TENCENT': Model_Type_tencent,
-            'ALI': Model_Type_ali,
-            'DEEPSEEK': Model_Type_deepseek
+            'tencent': Model_Type_tencent,
+            'ali': Model_Type_ali,
+            'deepseek': Model_Type_deepseek
         }
     except Exception as e:
         raise ValueError(f"Error initializing API clients: {str(e)}")
