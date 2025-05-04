@@ -41,7 +41,7 @@ class DictionaryManager:
                 self.dictionary = sorted_dict
                 self.last_modified = current_modified
                 
-            print(f"\033[32m字典已重新加载，共 {len(sorted_dict)} 条记录\033[0m")
+            print(f"\033[33m字典已重新加载，共 {len(sorted_dict)} 条记录\033[0m")
             
         except json.JSONDecodeError:
             print(f"\033[31m错误：字典文件 {self.dict_path} JSON格式错误\033[0m")
@@ -109,7 +109,7 @@ class ConfigManager:
                 self.config = new_config
                 self.last_modified = current_modified
                 
-            print(f"\033[32m配置已重新加载，修改时间: {time.ctime(current_modified)}\033[0m")
+            print(f"\033[33m配置已重新加载，修改时间: {time.ctime(current_modified)}\033[0m")
             return new_config
             
         except json.JSONDecodeError:
