@@ -89,7 +89,9 @@ def handle_translation(text, translation_queue):
         
         # 3. 构建提示词
         # 遍历提示词列表，尝试使用不同的提示词进行翻译
-        prompt = prompt0 + "\n" + prompt_user + "\n"
+        prompt = prompt0 + "\n"
+        if prompt_user:
+            prompt += prompt_user + "\n"
         dict_inuse = dict_manager.get_dict_matches(text) # 再次获取字典词汇 (虽然此处重复获取，但逻辑上为了保证每次循环都重新获取一次字典是更严谨的)
         if dict_inuse: # 如果获取到字典词汇，则将字典提示词和字典内容添加到当前提示词中，引导模型使用字典进行翻译
             prompt += prompt_dict0 + "\n" + str(dict_inuse) + "\n"
