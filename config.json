@@ -1,0 +1,22 @@
+{
+  "api_keys": {
+    "tencent": {
+      "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "base_url": "https://api.lkeap.cloud.tencent.com/v1",
+      "model_type": "deepseek-v3-0324"
+    },
+    "ali": {
+      "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model_type": "deepseek-v3"
+    },
+    "deepseek": {
+      "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "base_url": "https://api.deepseek.com/v1",
+      "model_type": "deepseek-chat"
+    }
+  },
+  "api_priority": ["TENCENT", "DEEPSEEK", "DEEPSEEK"],
+  "prompt_user": "格式例外：无",
+  "dict_path": "./dictionary.json"
+}

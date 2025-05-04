@@ -14,65 +14,74 @@ from queue import Queue  # 导入 Queue，用于创建线程安全的队列
 # 启用虚拟终端序列，支持 ANSI 转义代码，允许在终端显示彩色文本
 os.system('')
 
-###################################################################################
-###################################################################################
-#######                     以下代码为需要用户修改的部分                      #######
-###################################################################################
-###################################################################################
+# Load configuration from config.json
+def load_config():
+    try:
+        with open('config.json', 'r', encoding='utf8') as f:
+            config = json.load(f)
+        
+        # Validate required configurations
+        required_keys = ['api_keys', 'api_priority']
+        for key in required_keys:
+            if key not in config:
+                raise ValueError(f"Missing required configuration: {key}")
+                
+        return config
+    except FileNotFoundError:
+        raise FileNotFoundError("config.json file not found. Please create one.")
+    except json.JSONDecodeError:
+        raise ValueError("Invalid JSON format in config.json")
 
-dict_path = '.\\dictionary.json'
-# 替换字典路径。如果不需要使用替换字典，请将此变量留空（设为 None 或空字符串 ""）
+# Load configurations
+try:
+    config = load_config()
+    API_KEYS = config['api_keys']
+    API_PRIORITY = config['api_priority']
+    prompt_user = config.get('prompt_user', '')
+    dict_path = config.get('dict_path', './dictionary.json')
+except Exception as e:
+    print(f"\033[31mError loading configuration: {str(e)}\033[0m")
+    exit(1)
 
-# 初始化所有客户端（不使用的可以不填）
-# 腾讯云DeepSeek
-tencent_client = OpenAI(
-	api_key="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-	base_url="https://api.lkeap.cloud.tencent.com/v1",
-)
-# 指定使用的模型，使用deepseek v3以外的模型可能需要调整参数
-Model_Type_tencent =  "deepseek-v3-0324"
-# 腾讯云可选项模型包括 "deepseek-v3-0324"（推荐）  "deepseek-v3"
+# Initialize API clients
+def initialize_clients(api_keys):
+    clients = {}
+    try:
+        if 'tencent' in api_keys:
+            clients['TENCENT'] = OpenAI(
+                api_key=api_keys['tencent']['api_key'],
+                base_url=api_keys['tencent']['base_url']
+            )
+            Model_Type_tencent = api_keys['tencent']['model_type']
+        
+        if 'ali' in api_keys:
+            clients['ALI'] = OpenAI(
+                api_key=api_keys['ali']['api_key'],
+                base_url=api_keys['ali']['base_url']
+            )
+            Model_Type_ali = api_keys['ali']['model_type']
+        
+        if 'deepseek' in api_keys:
+            clients['DEEPSEEK'] = OpenAI(
+                api_key=api_keys['deepseek']['api_key'],
+                base_url=api_keys['deepseek']['base_url']
+            )
+            Model_Type_deepseek = api_keys['deepseek']['model_type']
+            
+        return clients, {
+            'TENCENT': Model_Type_tencent,
+            'ALI': Model_Type_ali,
+            'DEEPSEEK': Model_Type_deepseek
+        }
+    except Exception as e:
+        raise ValueError(f"Error initializing API clients: {str(e)}")
 
-# 阿里云DeepSeek
-ali_client = OpenAI(
-	api_key="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-	base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-)
-# 指定使用的模型
-Model_Type_ali =  "deepseek-v3"
-# 阿里云可选项模型包括 "deepseek-v3"（未充分测试，偶尔会卡死） "deepseek-r1-distill-llama-70b"（未测试，免费）
-
-# DeepSeek官网
-deepseek_client = OpenAI(
-	api_key="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-	base_url="https://api.deepseek.com/v1",
-)
-# 指定使用的模型
-Model_Type_deepseek =  "deepseek-chat"
-# DeepSeek官网可选项模型包括 "deepseek-chat"（推荐）
-
-# 可自由修改顺序和重试次数，填多少次就有多少次尝试机会，按顺序依次进行
-# 可选的DeepSeek接口有：
-# 腾讯云："TENCENT"（推荐首选，响应快）
-# 阿里云："ALI"（不推荐，其违禁反馈方式不太一样，本人未做充分测试）
-# 原版："DEEPSEEK"（推荐备选，响应速度一般，但容易绕过违禁）
-API_PRIORITY = ["TENCENT", "DEEPSEEK", "DEEPSEEK"]
-# 个人推荐按照第一次腾讯，第二三次原版的顺序来，体验最佳。你也可以多加几次重试机会。
-# 下面是两个例子，个人不太建议阿里云，试过偶尔会卡住不动，有能力的大佬可以修一下。
-# API_PRIORITY = ["TENCENT", "TENCENT"]
-# API_PRIORITY = ["ALI", "DEEPSEEK", "DEEPSEEK", "DEEPSEEK"]
-
-# 自定义额外提示词（可选）
-prompt_user='''
-格式例外：无
-'''
-# 可填任何你想说的，例如自定义翻译的角色、风格、类型、格式
-
-###################################################################################
-###################################################################################
-#######          需修改的代码到此结束，如要修改之后的代码请认真对待            #######
-###################################################################################
-###################################################################################
+# Initialize clients and model types
+try:
+    clients, model_types = initialize_clients(API_KEYS)
+except Exception as e:
+    print(f"\033[31mError initializing API clients: {str(e)}\033[0m")
+    exit(1)
 
 # 模型参数指定
 model_temperature = 1.2 # 取值范围[0,2]，增大会使模型选择一些选择概率较低的词，增加文本的创意性和多样性。降低会使文本更稳定可被预测
@@ -274,12 +283,13 @@ def handle_translation(text, translation_queue):
     retries = 0
     final_translation = ""
 	
-    # 处理成对符号
+    # 1. 处理成对符号
     text, removed_symbols = handle_paired_symbols(text)
 
-    # 处理句首句末标点
+    # 2. 处理句首句末标点
     text, text_start_special_chars, text_end_special_chars = remove_text_special_chars(text)
     
+    # 3. 构建提示词
     # 遍历提示词列表，尝试使用不同的提示词进行翻译
     prompt = prompt0 + prompt_user
     dict_inuse = get_dict(text) # 再次获取字典词汇 (虽然此处重复获取，但逻辑上为了保证每次循环都重新获取一次字典是更严谨的)
@@ -287,36 +297,11 @@ def handle_translation(text, translation_queue):
         prompt += prompt_dict0 + "\n" + str(dict_inuse) + "\n"
     prompt += prompt_end
 
-    if model_max_tokens:
-        limited_token_num = model_max_tokens
-    else:
-        limited_token_num = max(2*len(text),30)
-    model_params_tencent = {
-        "model": Model_Type_tencent,
-        "stream": True, # 流式输出，输出一个字抓一个字，防止后审查导致文案被撤回
-        "temperature": model_temperature,
-        "max_tokens": limited_token_num,
-        "top_p": model_top_p,
-        "messages": [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": text}
-        ]
-    }
+    # 4. 计算token限制
+    limited_token_num = model_max_tokens if model_max_tokens else max(2 * len(text), 30)
     
-    model_params_ali = {
-        "model": Model_Type_ali,
-        "stream": True,
-        "temperature": model_temperature,
-        "max_tokens": limited_token_num,
-        "top_p": model_top_p,
-        "messages": [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": text}
-        ]
-    }
-    
-    model_params_deepseek = {
-        "model": Model_Type_deepseek,
+    # 5. 基础模型参数
+    base_params = {
         "stream": True,
         "temperature": model_temperature,
         "max_tokens": limited_token_num,
@@ -332,7 +317,7 @@ def handle_translation(text, translation_queue):
     print(f"\033[36m[发送文本][limited_token_num = {limited_token_num}]\033[0m")
     print(f"{text}") # 打印提示词和翻译结果 (调试或日志记录用)
     
-    # 重试机制控制变量
+    # 6. 重试机制
     is_blocked = False
     block_retry_count = 0
     max_block_retries = len(API_PRIORITY)-1 # 根据 API_PRIORITY 里面的变量数量决定重试次数
@@ -341,20 +326,19 @@ def handle_translation(text, translation_queue):
         try:
             full_translation = []
             is_blocked = False
+            api_type = API_PRIORITY[block_retry_count]
 
-            if API_PRIORITY[block_retry_count] ==  "TENCENT": # block_retry_count作为counter，遍历 API_PRIORITY
-                stream = tencent_client.chat.completions.create(**model_params_tencent)
-                print("\033[36m[腾讯云流式反馈文本]\033[0m", end='')
-            elif API_PRIORITY[block_retry_count] ==  "ALI":
-                stream = ali_client.chat.completions.create(**model_params_ali)
-                print("\033[36m[阿里云流式反馈文本]\033[0m", end='')
-            elif API_PRIORITY[block_retry_count] ==  "DEEPSEEK":
-                stream = deepseek_client.chat.completions.create(**model_params_deepseek)
-                print("\033[36m[DeepSeek官网流式反馈文本]\033[0m", end='')
-            else: # 不规范填写 API_PRIORITY 时
-                print("\n\033[41m[警告]API_PRIORITY填写不合规，默认调用腾讯云\033[0m")
-                stream = tencent_client.chat.completions.create(**model_params_tencent)
-                print("\033[36m[腾讯云流式反馈文本]\033[0m", end='')
+            # 7. 动态选择API客户端
+            if api_type not in clients:
+                print(f"\n\033[41m[错误]未配置的API类型: {api_type}\033[0m")
+                block_retry_count += 1
+                continue
+                
+            # 8. 创建带模型类型的参数
+            model_params = {**base_params, "model": model_types[api_type]}
+            
+            print(f"\033[36m[{api_type}流式反馈文本]\033[0m", end='')
+            stream = clients[api_type].chat.completions.create(**model_params)
 
             for chunk_idx, chunk in enumerate(stream, 1):
                 if not chunk.choices:
@@ -364,21 +348,20 @@ def handle_translation(text, translation_queue):
                 full_translation.append(chunk_text)
                 print(f"\033[36m[{chunk_idx}]\033[0m \033[1;34m{chunk_text}\033[0m", end="", flush=True)
                 
-                # 云服务商敏感词检测
+                # 10. 敏感词检测
                 if "我无法给到相关内容" in chunk_text or "这个问题我暂时无法回答" in chunk_text:
                     is_blocked = True
                     print(f"\n\033[41m[警告]检测到云服务商审查！\033[0m", end="")
 
             current_translation = ''.join(full_translation)
 
-            # 如果被拦截且还有重试机会
+            # 11. 处理拦截情况
             if is_blocked and block_retry_count < max_block_retries:
                 block_retry_count += 1
                 print(f"\033[33m[正在重试 {block_retry_count + 1}/{max_block_retries + 1}]...\033[0m")
                 time.sleep(1)
                 continue
 
-            # 如果3次重试都被拦截
             if is_blocked:
                 print(f"\033[33m[翻译失败]\033[0m")
                 current_translation = "数据检查错误，输入或者输出包含疑似敏感内容被云服务商拦截。"
@@ -386,6 +369,7 @@ def handle_translation(text, translation_queue):
             if not current_translation:
                 raise ValueError("空响应")
             
+            # 12. 还原标点符号
             # 还原句首句末标点
             current_translation = restore_text_special_chars(
                 current_translation, 
@@ -417,10 +401,11 @@ def handle_translation(text, translation_queue):
             time.sleep(1)
             continue
         
-        # 如果当前提示词翻译成功，跳出重试循环
+        # 13. 成功时退出重试循环
         if not is_blocked:
             break
 
+    # 14. 最终结果处理
     if not final_translation and 'current_translation' in locals():
         final_translation = current_translation
         
