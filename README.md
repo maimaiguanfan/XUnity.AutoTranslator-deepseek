@@ -15,7 +15,7 @@
 - 删去对译文的日文字符检查功能。
 - 调整模型参数；动态调整token上限；调整temperature到更适合做翻译工作的值，让语言更多样、更华丽（有极少数可能出现有不太符合常识的词）
 
-**推荐**：配置翻译时使用的[云服务商的顺序](#jump)按**首次腾讯云**，**第二、三次原版DeepSeek**。
+**推荐**：配置翻译时使用的[云服务商的顺序](#jump1)按**首次腾讯云**，**第二、三次原版DeepSeek**。
 
 ## 准备工作
 
@@ -30,43 +30,57 @@
 
 安装必要的Python库：
 
-Ubuntu24.04
+- **Ubuntu24.04**
 ```bash
 sudo apt install python3-flask python3-gevent python3-openai
 ```
-其他
+- **其他**
 ```bash
 pip install Flask gevent openai
 ```
 
-### 3. 配置API
-克隆本项目后，修改deepseekv3.py中的`api_key`配置部分：
-```python
-xxxxx_client = OpenAI(
-	api_key="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-	base_url="https://xxx.xxxxx.com/v1",
-)
-Model_Type_xxxxx =  "deepseek-xxx"
+### 3. 修改配置文件
+`git clone`本项目后，取消追踪`config.json`
+```bash
+git update-index --assume-unchanged config.json
 ```
-如果使用其他云厂商的API和模型，需要自己修改`base_url`和`Model_Type_xxxxx`。
 
-### 4. <span id="jump">配置使用云服务商的顺序</span>
-可以自定义首次请求翻译时的云服务商，以及翻译失败后重试的云服务商，例如：
-```
-API_PRIORITY = ["TENCENT", "DEEPSEEK", "DEEPSEEK"]
-```
-上述配置即为首次翻译时选择腾讯，第二次和第三次选择官网DeepSeek。
+直接Download本项目者无需进行上述操作。
 
-### 5. 配置其他
+#### 3.1 配置API
+修改`api_key`为你的API密钥
+```json
+    "deepseek": {
+      "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "base_url": "https://api.deepseek.com/v1",
+      "model_type": "deepseek-chat"
+    }
+```
+
+#### 3.2 <span id="jump1">配置使用云服务商的顺序</span>
+默认首次翻译时选择腾讯，第二次和第三次选择官网DeepSeek。
+```json
+  "api_priority": ["tencent", "deepseek", "deepseek"],
+```
+
+可自行增加或删减重试的次数，可自行添加其他服务商。
+
+#### 3.3 配置额外提示词
+这部分会随着主提示词一起发送给AI。你可以填写任何你想和AI说的，例如游戏包含的角色风格、翻译的格式例外。
+```json
+  "prompt_user": "格式例外：无",
+```
+#### 3.4 配置字典路径
 字典路径`dict_path`，建议字典仅用于固定人名、技能名称、物品名称，剩下交给AI自由发挥。
-
-或者填入额外的提示词到`prompt_user`，再或者修改模型参数等。
+```json
+  "dict_path": "./dictionary.json"
+```
 
 ## 启动项目
 
 ### 1. 启动Python脚本
 确保Python脚本成功启动，命令行应显示：
-```
+```text
 翻译服务在 http://127.0.0.1:4000/translate 上启动
 ```
 
