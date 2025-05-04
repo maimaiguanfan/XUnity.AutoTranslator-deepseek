@@ -67,158 +67,166 @@ def handle_translation(text, translation_queue):
 
     # 初始化变量
     max_retries = 3
-    retries = 0
     final_translation = ""
+
+    # 分割文本为段落（保留空段落以维持原始换行结构）
+    paragraphs = text.split('\n') if '\n' in text else [text]
+    translated_paragraphs = []
+
+    for para in paragraphs:
+        if not para.strip():  # 空段落直接保留
+            translated_paragraphs.append('')
+            continue
 	
-    # 1. 处理成对符号
-    text, removed_symbols = handle_paired_symbols(text)
+        retries = 0
+        current_translation = ""
 
-    # 2. 处理句首句末标点
-    text, text_start_special_chars, text_end_special_chars = remove_text_special_chars(text)
-    
-    # 3. 构建提示词
-    # 遍历提示词列表，尝试使用不同的提示词进行翻译
-    prompt = prompt0 + "\n" + prompt_user + "\n"
-    dict_inuse = dict_manager.get_dict_matches(text) # 再次获取字典词汇 (虽然此处重复获取，但逻辑上为了保证每次循环都重新获取一次字典是更严谨的)
-    if dict_inuse: # 如果获取到字典词汇，则将字典提示词和字典内容添加到当前提示词中，引导模型使用字典进行翻译
-        prompt += prompt_dict0 + "\n" + str(dict_inuse) + "\n"
-    prompt += prompt_end
+        # 1. 处理成对符号
+        text, removed_symbols = handle_paired_symbols(text)
 
-    # 4. 动态计算token限制
-    current_config = config_manager.get_config()
-    token_limit_ratio = current_config['model_params']['token_limit_ratio']
-    min_tokens = current_config['model_params'].get('min_tokens', 30)
-    max_tokens = current_config['model_params']['max_tokens']
-    max_auto_tokens = current_config['model_params'].get('max_auto_tokens', 500)
-    text_length = len(text)
-    current_tokens = max(int(text_length * token_limit_ratio), min_tokens)
-    token_limit = (
-        max_tokens if max_tokens > 0
-        else min(current_tokens, max_auto_tokens)
-    )
-    
-    # 5. 基础模型参数
-    base_params = {
-        "stream": True,
-        "temperature": current_config['model_params']['temperature'],
-        "max_tokens": token_limit,
-        "top_p": current_config['model_params']['top_p'],
-        "messages": [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": text}
-        ]
-    }
+        # 2. 处理句首句末标点
+        text, text_start_special_chars, text_end_special_chars = remove_text_special_chars(text)
+        
+        # 3. 构建提示词
+        # 遍历提示词列表，尝试使用不同的提示词进行翻译
+        prompt = prompt0 + "\n" + prompt_user + "\n"
+        dict_inuse = dict_manager.get_dict_matches(text) # 再次获取字典词汇 (虽然此处重复获取，但逻辑上为了保证每次循环都重新获取一次字典是更严谨的)
+        if dict_inuse: # 如果获取到字典词汇，则将字典提示词和字典内容添加到当前提示词中，引导模型使用字典进行翻译
+            prompt += prompt_dict0 + "\n" + str(dict_inuse) + "\n"
+        prompt += prompt_end
 
-    print("\033[36m[提示词]\033[0m", end='')
-    print(f"{prompt}") # 打印提示词和翻译结果 (调试或日志记录用)
-    print(f"\033[36m[发送文本][token_limit = {token_limit}]\033[0m")
-    print(f"{text}") # 打印提示词和翻译结果 (调试或日志记录用)
-    
-    # 6. 重试机制
-    is_blocked = False
-    block_retry_count = 0
-    max_block_retries = len(API_PRIORITY)-1 # 根据 API_PRIORITY 里面的变量数量决定重试次数
-    
-    while block_retry_count <= max_block_retries:
-        try:
-            full_translation = []
-            is_blocked = False
-            api_type = API_PRIORITY[block_retry_count]
+        # 4. 动态计算token限制
+        current_config = config_manager.get_config()
+        token_limit_ratio = current_config['model_params']['token_limit_ratio']
+        min_tokens = current_config['model_params'].get('min_tokens', 30)
+        max_tokens = current_config['model_params']['max_tokens']
+        max_auto_tokens = current_config['model_params'].get('max_auto_tokens', 500)
+        text_length = len(text)
+        current_tokens = max(int(text_length * token_limit_ratio), min_tokens)
+        token_limit = (
+            max_tokens if max_tokens > 0
+            else min(current_tokens, max_auto_tokens)
+        )
+        
+        # 5. 基础模型参数
+        base_params = {
+            "stream": True,
+            "temperature": current_config['model_params']['temperature'],
+            "max_tokens": token_limit,
+            "top_p": current_config['model_params']['top_p'],
+            "messages": [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": text}
+            ]
+        }
 
-            # 7. 动态选择API客户端
-            if api_type not in clients:
-                print(f"\n\033[41m[错误]未配置的API类型: {api_type}\033[0m")
-                block_retry_count += 1
-                continue
-                
-            # 8. 创建带模型类型的参数
-            model_params = {**base_params, "model": model_types[api_type]}
-            
-            print(f"\033[36m[{api_type}流式反馈文本]\033[0m", end='')
-            stream = clients[api_type].chat.completions.create(**model_params)
+        print("\033[36m[提示词]\033[0m", end='')
+        print(f"{prompt}") # 打印提示词和翻译结果 (调试或日志记录用)
+        print(f"\033[36m[发送文本][token_limit = {token_limit}]\033[0m")
+        print(f"{text}") # 打印提示词和翻译结果 (调试或日志记录用)
+        
+        # 6. 重试机制
+        is_blocked = False
+        block_retry_count = 0
+        max_block_retries = len(API_PRIORITY)-1 # 根据 API_PRIORITY 里面的变量数量决定重试次数
+        
+        while block_retry_count <= max_block_retries:
+            try:
+                full_translation = []
+                is_blocked = False
+                api_type = API_PRIORITY[block_retry_count]
 
-            for chunk_idx, chunk in enumerate(stream, 1):
-                if not chunk.choices:
+                # 7. 动态选择API客户端
+                if api_type not in clients:
+                    print(f"\n\033[41m[错误]未配置的API类型: {api_type}\033[0m")
+                    block_retry_count += 1
                     continue
                     
-                chunk_text = chunk.choices[0].delta.content or ""
-                full_translation.append(chunk_text)
-                print(f"\033[36m[{chunk_idx}]\033[0m \033[1;34m{chunk_text}\033[0m", end="", flush=True)
+                # 8. 创建带模型类型的参数
+                model_params = {**base_params, "model": model_types[api_type]}
                 
-                # 10. 敏感词检测
-                if "我无法给到相关内容" in chunk_text or "这个问题我暂时无法回答" in chunk_text:
-                    is_blocked = True
-                    print(f"\n\033[41m[警告]检测到云服务商审查！\033[0m", end="")
+                print(f"\033[36m[{api_type}流式反馈文本]\033[0m", end='')
+                stream = clients[api_type].chat.completions.create(**model_params)
 
-            current_translation = ''.join(full_translation)
+                for chunk_idx, chunk in enumerate(stream, 1):
+                    if not chunk.choices:
+                        continue
+                        
+                    chunk_text = chunk.choices[0].delta.content or ""
+                    full_translation.append(chunk_text)
+                    print(f"\033[36m[{chunk_idx}]\033[0m \033[1;34m{chunk_text}\033[0m", end="", flush=True)
+                    
+                    # 10. 敏感词检测
+                    if "我无法给到相关内容" in chunk_text or "这个问题我暂时无法回答" in chunk_text:
+                        is_blocked = True
+                        print(f"\n\033[41m[警告]检测到云服务商审查！\033[0m", end="")
 
-            # 11. 处理拦截情况
-            if is_blocked and block_retry_count < max_block_retries:
-                block_retry_count += 1
-                print(f"\033[33m[正在重试 {block_retry_count + 1}/{max_block_retries + 1}]...\033[0m")
-                time.sleep(1)
-                continue
+                current_translation = ''.join(full_translation)
 
-            if is_blocked:
-                print(f"\033[33m[翻译失败]\033[0m")
-                current_translation = "数据检查错误，输入或者输出包含疑似敏感内容被云服务商拦截。"
-
-            if not current_translation:
-                raise ValueError("空响应")
-            
-            # 12. 还原标点符号
-            # 还原句首句末标点
-            current_translation = restore_text_special_chars(
-                current_translation, 
-                text_start_special_chars, 
-                text_end_special_chars
-            )
-            
-            # 还原成对符号
-            current_translation = restore_paired_symbols(current_translation, removed_symbols)
-
-        except openai.BadRequestError as e:
-            if "data_inspection_failed" in str(e):
-                block_retry_count += 1
-                if block_retry_count <= max_block_retries:
-                    print(f"\n\033[41m[警告]检测到阿里云审查！(正在重试 {block_retry_count}/{max_block_retries}) 错误信息: {str(e)}\033[0m")
-
+                # 11. 处理拦截情况
+                if is_blocked and block_retry_count < max_block_retries:
+                    block_retry_count += 1
+                    print(f"\033[33m[正在重试 {block_retry_count + 1}/{max_block_retries + 1}]...\033[0m")
                     time.sleep(1)
                     continue
-                else:
-                    current_translation = "数据检查错误，输入或者输出包含疑似敏感内容被云服务商拦截。"
-            else:
-                raise e
-        
-        except openai.RateLimitError as e:
-            print(f"\033[31m[限流错误] {str(e)}\033[0m")
-            time.sleep(2 ** block_retry_count)  # 指数退避
-            continue
-        
-        except openai.APIConnectionError as e:
-            print(f"\033[31m[连接错误] {str(e)}\033[0m")
-            if "SSL" in str(e):
-                return "SSL证书验证失败，请检查系统时间"
 
-        except Exception as e:
-            retries += 1
-            print(f"\033[33m[重试{retries}/{max_retries}] 错误: {str(e)}\033[0m")
-            if retries >= max_retries:
-                raise e
-            time.sleep(1)
-            continue
-        
-        # 13. 成功时退出重试循环
-        if not is_blocked:
-            break
+                if is_blocked:
+                    print(f"\033[33m[翻译失败]\033[0m")
+                    current_translation = "数据检查错误，输入或者输出包含疑似敏感内容被云服务商拦截。"
+
+                if not current_translation:
+                    raise ValueError("空响应")
+                
+                # 12. 还原标点符号
+                # 还原句首句末标点
+                current_translation = restore_text_special_chars(
+                    current_translation, 
+                    text_start_special_chars, 
+                    text_end_special_chars
+                )
+                
+                # 还原成对符号
+                current_translation = restore_paired_symbols(current_translation, removed_symbols)
+
+            except openai.BadRequestError as e:
+                if "data_inspection_failed" in str(e):
+                    block_retry_count += 1
+                    if block_retry_count <= max_block_retries:
+                        print(f"\n\033[41m[警告]检测到阿里云审查！(正在重试 {block_retry_count}/{max_block_retries}) 错误信息: {str(e)}\033[0m")
+
+                        time.sleep(1)
+                        continue
+                    else:
+                        current_translation = "数据检查错误，输入或者输出包含疑似敏感内容被云服务商拦截。"
+                else:
+                    raise e
+            
+            except openai.RateLimitError as e:
+                print(f"\033[31m[限流错误] {str(e)}\033[0m")
+                time.sleep(2 ** block_retry_count)  # 指数退避
+                continue
+            
+            except openai.APIConnectionError as e:
+                print(f"\033[31m[连接错误] {str(e)}\033[0m")
+                if "SSL" in str(e):
+                    return "SSL证书验证失败，请检查系统时间"
+
+            except Exception as e:
+                retries += 1
+                print(f"\033[33m[重试{retries}/{max_retries}] 错误: {str(e)}\033[0m")
+                if retries >= max_retries:
+                    raise e
+                time.sleep(1)
+                continue
+            
+            # 13. 成功时退出重试循环
+            if not is_blocked:
+                break
+
+        translated_paragraphs.append(current_translation if current_translation else "翻译失败！")
 
     # 14. 最终结果处理
-    if not final_translation and 'current_translation' in locals():
-        final_translation = current_translation
-        
-    if not final_translation:
-        raise ValueError("所有提示词尝试后仍无法获得有效翻译")
-        
+    final_translation = '\n'.join(translated_paragraphs)
     translation_queue.put(final_translation)
 
 @app.route('/translate', methods=['GET'])
