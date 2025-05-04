@@ -7,7 +7,6 @@ import openai
 from flask import Flask, request  # 导入 Flask 库，用于创建 Web 应用，需要安装：pip install Flask
 from gevent.pywsgi import WSGIServer  # 导入 gevent 的 WSGIServer，用于提供高性能的异步服务器，需要安装：pip install gevent
 from urllib.parse import unquote  # 导入 unquote 函数，用于 URL 解码
-from threading import Thread  # 导入 Thread，用于创建线程 (虽然实际上未使用，但import没有坏处)
 from queue import Queue  # 导入 Queue，用于创建线程安全的队列
 from pathlib import Path
 
@@ -99,8 +98,6 @@ prompt_list=[prompt0] # 提示词列表。可以配置多个提示词，程序�
 # 提示字典相关的提示词配置
 prompt_dict0='''翻译中使用以下字典，格式为{\'原文\':\'译文\'}'''
 # 提示模型在翻译时使用提供的字典。字典格式为 JSON 格式的字符串，键为原文，值为译文
-
-request_queue = Queue()  # 创建请求队列，用于异步处理翻译请求。使用队列可以避免请求处理阻塞主线程，提高服务器响应速度
 
 def handle_translation(text, translation_queue):
     """流式翻译处理（兼容腾讯云/阿里云/原版DeepSeek的敏感拦截，新增字典/多提示词/特殊字符处理）"""
