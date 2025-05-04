@@ -4,87 +4,80 @@ import json
 import time
 import concurrent.futures  # 导入 concurrent.futures，用于线程池
 import openai
-from openai import OpenAI   # 导入 OpenAI 库，用于调用 OpenAI API，需要安装：pip install openai  并更新：pip install --upgrade openai
 from flask import Flask, request  # 导入 Flask 库，用于创建 Web 应用，需要安装：pip install Flask
 from gevent.pywsgi import WSGIServer  # 导入 gevent 的 WSGIServer，用于提供高性能的异步服务器，需要安装：pip install gevent
 from urllib.parse import unquote  # 导入 unquote 函数，用于 URL 解码
 from threading import Thread  # 导入 Thread，用于创建线程 (虽然实际上未使用，但import没有坏处)
 from queue import Queue  # 导入 Queue，用于创建线程安全的队列
+from pathlib import Path
+
+from hot_reload import DictionaryManager, ConfigManager
 
 # 启用虚拟终端序列，支持 ANSI 转义代码，允许在终端显示彩色文本
 os.system('')
 
-# Load configuration from config.json
-def load_config():
-    """安全加载配置文件"""
-    try:
-        with open('config.json', 'r', encoding='utf8') as f:
-            config = json.load(f)
-        
-        # 参数验证
-        required_sections = ['api_keys', 'model_params', 'api_priority']
-        for section in required_sections:
-            if section not in config:
-                raise ValueError(f"Missing required section: {section}")
-                
-        return config
-    except FileNotFoundError:
-        raise FileNotFoundError("config.json file not found. Please create one.")
-    except json.JSONDecodeError:
-        raise ValueError("Invalid JSON format in config.json")
-    except Exception as e:
-        print(f"\033[31m配置加载错误: {str(e)}\033[0m")
+app = Flask(__name__) # 创建 Flask 应用实例
 
-# Load configurations
-try:
-    config = load_config()
-    API_KEYS = config['api_keys']
-    API_PRIORITY = config['api_priority']
-    prompt_user = config.get('prompt_user', '')
-    dict_path = config.get('dict_path', './dictionary.json')
-except Exception as e:
-    print(f"\033[31mError loading configuration: {str(e)}\033[0m")
+# 替换原有的配置加载部分
+config_manager = ConfigManager('config.json')
+config_manager.start_watcher()
+
+# 获取初始配置
+initial_config = config_manager.get_config()
+if not initial_config:
+    print("\033[31mError: 初始配置加载失败\033[0m")
     exit(1)
 
-# Initialize API clients
-def initialize_clients(api_keys):
-    clients = {}
+API_KEYS = initial_config['api_keys']
+API_PRIORITY = initial_config['api_priority']
+prompt_user = initial_config.get('prompt_user', '')
+dict_path = initial_config.get('dict_path', './dictionary.json')
+
+# 初始化字典管理器
+dict_manager = DictionaryManager(dict_path)
+dict_manager.start_watcher()
+
+# 初始化API客户端
+clients = {}
+model_types = {}
+if not config_manager.update_clients(clients, model_types):
+    print("\033[31mError: API客户端初始化失败\033[0m")
+    exit(1)
+
+# 添加热重载路由
+@app.route('/reload_config', methods=['GET'])
+def reload_config():
+    """手动触发配置重载"""
     try:
-        if 'tencent' in api_keys:
-            clients['tencent'] = OpenAI(
-                api_key=api_keys['tencent']['api_key'],
-                base_url=api_keys['tencent']['base_url']
-            )
-            Model_Type_tencent = api_keys['tencent']['model_type']
-        
-        if 'ali' in api_keys:
-            clients['ali'] = OpenAI(
-                api_key=api_keys['ali']['api_key'],
-                base_url=api_keys['ali']['base_url']
-            )
-            Model_Type_ali = api_keys['ali']['model_type']
-        
-        if 'deepseek' in api_keys:
-            clients['deepseek'] = OpenAI(
-                api_key=api_keys['deepseek']['api_key'],
-                base_url=api_keys['deepseek']['base_url']
-            )
-            Model_Type_deepseek = api_keys['deepseek']['model_type']
+        new_config = config_manager.load_config()
+        if not new_config:
+            return {"status": "error", "message": "配置未更改或加载失败"}, 400
             
-        return clients, {
-            'tencent': Model_Type_tencent,
-            'ali': Model_Type_ali,
-            'deepseek': Model_Type_deepseek
-        }
+        # 更新全局变量
+        global API_KEYS, API_PRIORITY, prompt_user, dict_path
+        API_KEYS = new_config['api_keys']
+        API_PRIORITY = new_config['api_priority']
+        prompt_user = new_config.get('prompt_user', '')
+        
+        # 更新字典路径并重载字典
+        new_dict_path = new_config.get('dict_path', './dictionary.json')
+        if new_dict_path != dict_path:
+            dict_path = new_dict_path
+            dict_manager.dict_path = Path(new_dict_path)
+            dict_manager.load_dictionary()
+        
+        # 更新API客户端
+        if config_manager.update_clients(clients, model_types):
+            return {
+                "status": "success", 
+                "message": f"配置已重载，API客户端已更新，字典路径: {dict_path}"
+            }
+        else:
+            return {"status": "partial_success", "message": "配置已重载但API客户端更新失败"}, 200
+            
     except Exception as e:
-        raise ValueError(f"Error initializing API clients: {str(e)}")
+        return {"status": "error", "message": str(e)}, 500
 
-# Initialize clients and model types
-try:
-    clients, model_types = initialize_clients(API_KEYS)
-except Exception as e:
-    print(f"\033[31mError initializing API clients: {str(e)}\033[0m")
-    exit(1)
 
 # 提示词 (Prompt) 配置
 prompt0='''
@@ -100,75 +93,6 @@ prompt_list=[prompt0] # 提示词列表。可以配置多个提示词，程序�
 # 提示字典相关的提示词配置
 prompt_dict0='''翻译中使用以下字典，格式为{\'原文\':\'译文\'}'''
 # 提示模型在翻译时使用提供的字典。字典格式为 JSON 格式的字符串，键为原文，值为译文
-
-app = Flask(__name__) # 创建 Flask 应用实例
-
-# 读取提示字典
-def load_dictionary(dict_path):
-    """
-    优化后的字典加载函数
-    
-    Args:
-        dict_path (str): 字典文件路径
-        
-    Returns:
-        dict: 按key长度降序排列的字典，如果文件不存在或无效则返回空字典
-    """
-    if not dict_path:
-        return {}
-    
-    try:
-        with open(dict_path, 'r', encoding='utf8') as f:
-            dictionary = json.load(f)
-            
-            # 验证字典格式
-            if not isinstance(dictionary, dict):
-                raise ValueError("Dictionary is not a valid JSON object")
-                
-            # 一次性排序并创建新字典
-            return {
-                k: dictionary[k] 
-                for k in sorted(dictionary.keys(), key=len, reverse=True)
-            }
-            
-    except FileNotFoundError:
-        print(f"\033[33m警告：字典文件 {dict_path} 未找到，将不使用字典。\033[0m")
-        return {}
-    except json.JSONDecodeError:
-        print(f"\033[31m错误：字典文件 {dict_path} JSON 格式错误，请检查字典文件。\033[0m")
-        return {}
-    except Exception as e:
-        print(f"\033[31m读取字典文件时发生未知错误: {e}\033[0m")
-        return {}
-
-# 初始化字典（在程序启动时加载一次）
-prompt_dict = load_dictionary(dict_path)
-
-def get_dict_matches(text):
-    """
-    优化后的字典匹配函数
-    
-    Args:
-        text (str): 待匹配的文本
-        
-    Returns:
-        dict: 匹配到的字典条目 {原文: 译文}
-    """
-    if not prompt_dict:
-        return {}
-    
-    matches = {}
-    remaining_text = text
-    
-    # 遍历已排序的字典keys
-    for key in prompt_dict:
-        if key in remaining_text:
-            matches[key] = prompt_dict[key]
-            remaining_text = remaining_text.replace(key, '')
-            if not remaining_text:
-                break
-                
-    return matches
 
 request_queue = Queue()  # 创建请求队列，用于异步处理翻译请求。使用队列可以避免请求处理阻塞主线程，提高服务器响应速度
 
@@ -316,16 +240,17 @@ def handle_translation(text, translation_queue):
     # 3. 构建提示词
     # 遍历提示词列表，尝试使用不同的提示词进行翻译
     prompt = prompt0 + prompt_user
-    dict_inuse = get_dict_matches(text) # 再次获取字典词汇 (虽然此处重复获取，但逻辑上为了保证每次循环都重新获取一次字典是更严谨的)
+    dict_inuse = dict_manager.get_dict_matches(text) # 再次获取字典词汇 (虽然此处重复获取，但逻辑上为了保证每次循环都重新获取一次字典是更严谨的)
     if dict_inuse: # 如果获取到字典词汇，则将字典提示词和字典内容添加到当前提示词中，引导模型使用字典进行翻译
         prompt += prompt_dict0 + "\n" + str(dict_inuse) + "\n"
     prompt += prompt_end
 
     # 4. 动态计算token限制
-    token_limit_ratio = config['model_params']['token_limit_ratio']
-    min_tokens = config['model_params'].get('min_tokens', 30)
-    max_tokens = config['model_params']['max_tokens']
-    max_auto_tokens = config['model_params'].get('max_auto_tokens', 500)
+    current_config = config_manager.get_config()
+    token_limit_ratio = current_config['model_params']['token_limit_ratio']
+    min_tokens = current_config['model_params'].get('min_tokens', 30)
+    max_tokens = current_config['model_params']['max_tokens']
+    max_auto_tokens = current_config['model_params'].get('max_auto_tokens', 500)
     text_length = len(text)
     current_tokens = max(int(text_length * token_limit_ratio), min_tokens)
     token_limit = (
@@ -336,9 +261,9 @@ def handle_translation(text, translation_queue):
     # 5. 基础模型参数
     base_params = {
         "stream": True,
-        "temperature": config['model_params']['temperature'],
+        "temperature": current_config['model_params']['temperature'],
         "max_tokens": token_limit,
-        "top_p": config['model_params']['top_p'],
+        "top_p": current_config['model_params']['top_p'],
         "messages": [
             {"role": "system", "content": prompt},
             {"role": "user", "content": text}
