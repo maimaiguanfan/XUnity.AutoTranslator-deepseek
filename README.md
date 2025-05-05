@@ -81,7 +81,7 @@ git update-index --assume-unchanged config.json
 ### 1. 启动Python脚本
 运行方式：
 ```bash
-python deepseekv3.py
+python run_app.py
 ```
 正确运行时命令行应显示：
 ```text
