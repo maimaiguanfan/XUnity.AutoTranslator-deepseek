@@ -23,7 +23,7 @@ def translate():
             translation_queue
         )
         try:
-            future.result(timeout=180)
+            future.result(timeout=30)
             result = translation_queue.get()
             
             if result.startswith("[ERROR]"):
