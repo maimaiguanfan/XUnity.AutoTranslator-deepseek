@@ -43,7 +43,11 @@ pip install Flask gevent openai
 ```
 
 ### 3. 修改配置文件
-克隆本项目后，取消追踪 `config.json`
+
+#### 3.1 取消追踪配置文件（可选）
+**仅限获取方式为 `git clone` 者**
+
+取消追踪 `config.json`
 ```bash
 git update-index --assume-unchanged config.json
 ```
@@ -54,7 +58,7 @@ git update-index --assume-unchanged dictionary.json
 
 直接Download本项目者无需进行上述操作。
 
-#### 3.1 配置API
+#### 3.2 配置API（必须）
 修改 `api_key` 为你的API密钥
 ```json
     "deepseek": {
@@ -64,7 +68,7 @@ git update-index --assume-unchanged dictionary.json
     }
 ```
 
-#### 3.2 <span id="jump1">配置使用云服务商的顺序</span>
+#### 3.3 <span id="jump1">配置使用云服务商的顺序（必须）</span>
 默认首次翻译时选择腾讯，第二次和第三次选择官网DeepSeek。
 ```json
   "api_priority": ["tencent", "deepseek", "deepseek"],
@@ -72,16 +76,20 @@ git update-index --assume-unchanged dictionary.json
 
 可自行增加或删减重试的次数，可自行添加其他服务商。
 
-#### 3.3 配置额外提示词
+#### 3.4 配置额外提示词（可选）
 这部分会随着主提示词一起发送给AI。你可以填写任何你想和AI说的，例如游戏包含的角色风格、翻译的格式例外。
 ```json
   "prompt_user": "格式例外：XXXXXX",
 ```
-#### 3.4 配置字典路径
-字典路径 `dict_path` ，建议字典仅用于固定人名、技能名称、物品名称，剩下交给AI自由发挥。
+#### 3.5 配置字典（可选）
+字典文件 `dictionary.json` 。json格式，键为原文，值为译文。
 ```json
-  "dict_path": "./dictionary.json"
+{
+  "原文1": "译文1",
+  "原文2": "译文2"
+}
 ```
+建议仅用于固定人名、地名、技能名称、物品名称，剩下交给AI自由发挥。
 
 ## 启动项目
 
@@ -104,9 +112,15 @@ python run_app.py
 ```ini
 [Service]
 Endpoint=CustomTranslate
-
+```
+```ini
 [Custom]
 Url=http://127.0.0.1:4000/translate
+```
+如果支持低延迟模式建议打开
+```ini
+[Custom]
+EnableShortDelay=True
 ```
 
 ## 参考项目
