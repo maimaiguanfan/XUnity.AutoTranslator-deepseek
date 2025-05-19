@@ -1,8 +1,11 @@
 from typing import Tuple, List
 
-def handle_paired_symbols(text: str) -> Tuple[str, List[tuple]]:
-    """检测并去除成对符号"""
-    PAIRS_TO_CHECK = [
+SPECIAL_CHARS = [
+        '，', '。', '？', '！', '、', '…', '—', '~', '～',
+        ',', '.', '?', '!', ' ', '♡'
+    ]
+
+PAIRS_TO_CHECK = [
         ("「", "」"),  # 鉤括弧
         ("『", "』"),  # 二重鉤括弧
         ("（", "）"),  # 圆括号
@@ -10,7 +13,17 @@ def handle_paired_symbols(text: str) -> Tuple[str, List[tuple]]:
         ("(", ")"),   # 英文括号
         (""", """)    # 中文引号
     ]
-    
+
+# 将 PAIRS_TO_CHECK 中的每个元组拆分为单个字符并添加到新列表中
+new_chars = []
+for pair in PAIRS_TO_CHECK:
+    new_chars.extend([pair[0], pair[1]])
+
+# 合并两个列表，并去除可能重复的元素
+combined_chars = list(set(SPECIAL_CHARS + new_chars))
+
+def handle_paired_symbols(text: str) -> Tuple[str, List[tuple]]:
+    """检测并去除成对符号"""
     removed_symbols = []
     
     while True:
@@ -73,46 +86,46 @@ def handle_paired_symbols(text: str) -> Tuple[str, List[tuple]]:
     return text, removed_symbols
 
 def remove_text_special_chars(text: str) -> Tuple[str, List[str], List[str]]:
-    """检查并去除句首句末特殊符号"""
-    special_chars = [
-        '，', '。', '？', '！', '、', '…', '—', '~', '～',
-        ',', '.', '?', '!', ' ', '♡'
-    ]
-    
-    # 处理文本开头的标点
+    """检测句首和句末特殊符号，不做删除，返回完整文本、句首特殊符号列表、句末特殊符号列表"""
+
+    # 检测句首特殊符号
     text_start_special_chars = []
     i = 0
-    while i < len(text) and text[i] in special_chars:
+    while i < len(text) and text[i] in combined_chars:
         text_start_special_chars.append(text[i])
         i += 1
-        
-    # 处理文本末尾的标点
+
+    # 检测句末特殊符号
     text_end_special_chars = []
     i = len(text) - 1
-    while i >= 0 and text[i] in special_chars:
+    while i >= 0 and text[i] in combined_chars:
         text_end_special_chars.insert(0, text[i])
         i -= 1
-        
-    # 去除开头和结尾的标点
-    if text_start_special_chars:
-        text = text[len(text_start_special_chars):]
-    if text_end_special_chars:
-        text = text[:-len(text_end_special_chars)]
-        
+
     return text, text_start_special_chars, text_end_special_chars
 
+
 def restore_text_special_chars(
-    text: str, 
-    text_start_special_chars: List[str], 
+    text: str,
+    text_start_special_chars: List[str],
     text_end_special_chars: List[str]
 ) -> str:
-    """还原句首句末特殊符号"""
-    # 添加原始文本的开头标点
-    if text_start_special_chars:
-        text = ''.join(text_start_special_chars) + text
-    # 添加原始文本的末尾标点
-    if text_end_special_chars:
-        text = text + ''.join(text_end_special_chars)
+    """去除当前文本句首/句末特殊符号，然后添加指定的句首/句末特殊符号"""
+
+    # 去除现有句首特殊符号
+    i = 0
+    while i < len(text) and text[i] in combined_chars:
+        i += 1
+    text = text[i:]
+
+    # 去除现有句末特殊符号
+    i = len(text) - 1
+    while i >= 0 and text[i] in combined_chars:
+        i -= 1
+    text = text[:i+1]
+
+    # 添加指定的特殊符号
+    text = ''.join(text_start_special_chars) + text + ''.join(text_end_special_chars)
     return text
 
 def restore_paired_symbols(text: str, removed_symbols: List[tuple]) -> str:
