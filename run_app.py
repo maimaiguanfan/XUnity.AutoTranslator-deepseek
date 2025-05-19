@@ -20,7 +20,8 @@ def translate():
         future = executor.submit(
             translation_service.handle_translation,
             text,
-            translation_queue
+            translation_queue,
+            print_debug=True
         )
         try:
             future.result(timeout=30)
