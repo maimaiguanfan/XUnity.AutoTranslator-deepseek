@@ -17,5 +17,5 @@ venv/
 *.png
 *.csv
 
-# 忽略 API 配置文件
-config.json
+# 忽略 json 配置文件
+*.json
