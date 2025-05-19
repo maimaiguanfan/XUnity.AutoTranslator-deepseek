@@ -1,37 +1,35 @@
 
 # XUnity.AutoTranslator-deepseek
 
-本项目通过调用DeepSeek V3 API，实现Unity游戏中日文文本的自动翻译。
+本项目通过调用 DeepSeek V3 API ，实现 Unity 游戏中日文文本的自动翻译。
 
 ## 分支特性
 
 - **采用流式接收文案，防止说完就撤回。**
 - **自动识别文案是否被云服务商和谐。**
-- **支持文案被和谐后自动更换云服务商重试。**
-- 支持[腾讯云DeepSeek V3](https://console.cloud.tencent.com/lkeap/api)和[原版DeepSeek V3](https://platform.deepseek.com/)。
-- 不完全支持[阿里云DeepSeek V3](https://bailian.console.aliyun.com/?tab=model#/api-key)**（未充分测试）**。
+- **支持文案被和谐后自动更换云服务商重试**（[点击](#jump1)查看详情）。
+- 支持腾讯云 DeepSeek V3 和官网 DeepSeek V3 。
+- 不完全支持阿里云 DeepSeek V3 **（未充分测试）**。
 - 实时检测字典变化，无需重启翻译服务即可更新字典。
-- 使用单独的json文件存储API keys，轻度用户无需对代码进行修改。
+- 使用单独的 .json 文件存储 API keys，轻度用户无需对代码进行修改。
 - 优化标点符号预处理。
-- 动态调整每次发送翻译请求时的token上限。
+- 动态调整每次发送翻译请求时的 token 上限。
 - （可能是缺点）删去对译文的重复文字检查功能。
 - （可能是缺点）删去对译文的日文字符检查功能。
-- 调整模型参数；调整temperature到更适合做翻译工作的值，让语言更多样、更华丽（有极少数可能出现有不太符合常识的词。该值过高时，遇到过最离谱的表述是“这块豆腐像脑浆一样嫩滑”）。
-
-**推荐**：配置翻译时使用的[云服务商的顺序](#jump1)按**首次腾讯云**，**第二、三次原版DeepSeek**。
+- 调整模型参数；调整 temperature 到更适合做翻译工作的值，让语言更多样、更华丽（有极少数可能出现有不太符合常识的词。该值过高时，遇到过最离谱的表述是“这块豆腐像脑浆一样嫩滑”）。
 
 ## 准备工作
 
-### 1. 获取API密钥
-- 访问[腾讯云API控制台](https://console.cloud.tencent.com/lkeap/api)或[DeepSeek开放平台](https://platform.deepseek.com/)申请DeepSeek的API密钥。
-- 也可以使用其他平台提供的DeepSeek API。
+### 1. 获取 API 密钥
+- 访问[腾讯云 API 控制台](https://console.cloud.tencent.com/lkeap/api)或[ DeepSeek 开放平台](https://platform.deepseek.com/)申请DeepSeek的API密钥。
+- 也可以使用其他平台提供的符合 OpenAI 接口的 API ，例如[阿里云 DeepSeek ](https://bailian.console.aliyun.com/?tab=model#/api-key)。
 
 ### 2. 安装依赖
 确保已安装以下软件和库：
 - **XUnity.AutoTranslator**
 - **Python 3.x**
 
-安装必要的Python库：
+安装必要的 Python 库：
 
 - **Ubuntu24.04**
 ```bash
@@ -58,7 +56,7 @@ git update-index --assume-unchanged dictionary.json
 
 直接Download本项目者无需进行上述操作。
 
-#### 3.2 配置API（必须）
+#### 3.2 配置 API （必须）
 修改 `api_key` 为你的API密钥
 ```json
     "deepseek": {
@@ -69,20 +67,20 @@ git update-index --assume-unchanged dictionary.json
 ```
 
 #### 3.3 <span id="jump1">配置使用云服务商的顺序（必须）</span>
-默认首次翻译时选择腾讯，第二次和第三次选择官网DeepSeek。
+默认首次翻译时选择腾讯，翻译失败时，第二次选择官网 DeepSeek ，再次失败时第三次选择官网 DeepSeek 。
 ```json
   "api_priority": ["tencent", "deepseek", "deepseek"],
 ```
 
-可自行增加或删减重试的次数，可自行添加其他服务商。
+可自行增加或删减重试的次数，例如4次
 
 #### 3.4 配置额外提示词（可选）
-这部分会随着主提示词一起发送给AI。你可以填写任何你想和AI说的，例如游戏包含的角色风格、翻译的格式例外。
+这部分会随着主提示词一起发送给 AI 。你可以填写任何你想和AI说的，例如游戏包含的角色风格、翻译的格式例外。
 ```json
   "prompt_user": "格式例外：XXXXXX",
 ```
 #### 3.5 配置字典（可选）
-字典文件 `dictionary.json` 。json格式，键为原文，值为译文。
+字典文件 `dictionary.json` 。键为原文，值为译文。
 ```json
 {
   "原文1": "译文1",
@@ -93,7 +91,7 @@ git update-index --assume-unchanged dictionary.json
 
 ## 启动项目
 
-### 1. 启动Python脚本
+### 1. 启动翻译服务
 运行方式：
 ```bash
 python run_app.py
@@ -108,7 +106,7 @@ python run_app.py
 ```
 
 ### 2. 配置XUnity.AutoTranslator
-修改XUnity.AutoTranslator插件的配置文件`AutoTranslatorConfig.ini`或`Config.ini`：
+修改XUnity.AutoTranslator插件的配置文件 `AutoTranslatorConfig.ini` 或 `Config.ini` ：
 ```ini
 [Service]
 Endpoint=CustomTranslate
@@ -129,4 +127,4 @@ EnableShortDelay=True
 
 ---
 
-通过以上步骤，您可以轻松实现Unity游戏中日文文本的自动翻译。如有问题，请参考相关文档或联系开发者。
+通过以上步骤，您可以轻松实现 Unity 游戏中日文文本的自动翻译。如有问题，请参考相关文档或联系开发者。
