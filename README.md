@@ -40,15 +40,19 @@ pip install Flask gevent openai
 ```
 
 ### 3. 修改配置文件
-`git clone`本项目后，取消追踪`config.json`
+克隆本项目后，取消追踪 `config.json`
 ```bash
 git update-index --assume-unchanged config.json
+```
+类似的，可以取消追踪 `dictionary.json`
+```bash
+git update-index --assume-unchanged dictionary.json
 ```
 
 直接Download本项目者无需进行上述操作。
 
 #### 3.1 配置API
-修改`api_key`为你的API密钥
+修改 `api_key` 为你的API密钥
 ```json
     "deepseek": {
       "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -71,7 +75,7 @@ git update-index --assume-unchanged config.json
   "prompt_user": "格式例外：XXXXXX",
 ```
 #### 3.4 配置字典路径
-字典路径`dict_path`，建议字典仅用于固定人名、技能名称、物品名称，剩下交给AI自由发挥。
+字典路径 `dict_path` ，建议字典仅用于固定人名、技能名称、物品名称，剩下交给AI自由发挥。
 ```json
   "dict_path": "./dictionary.json"
 ```
