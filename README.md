@@ -22,7 +22,7 @@
 
 ### 1. 获取 API 密钥
 - 访问[腾讯云 API 控制台](https://console.cloud.tencent.com/lkeap/api)或[ DeepSeek 开放平台](https://platform.deepseek.com/)申请DeepSeek的API密钥。
-- 也可以使用其他平台提供的符合 OpenAI 接口的 API ，例如[阿里云 DeepSeek ](https://bailian.console.aliyun.com/?tab=model#/api-key)。
+- 也可以使用其他平台提供的符合 OpenAI 接口的 API ，例如[阿里云百炼](https://bailian.console.aliyun.com/?tab=model#/api-key)。
 
 ### 2. 安装依赖
 确保已安装以下软件和库：
@@ -67,7 +67,7 @@ git update-index --assume-unchanged dictionary.json
 ```
 
 #### 3.3 <span id="jump1">配置使用云服务商的顺序（必须）</span>
-默认首次翻译时选择腾讯，翻译失败时，第二次选择官网 DeepSeek ，再次失败时第三次选择官网 DeepSeek 。
+体验最佳为默认值，即首次翻译使用腾讯云，翻译失败时，第二次选择官网 DeepSeek ，再次失败时第三次继续选择官网 DeepSeek 。
 ```json
   "api_priority": ["tencent", "deepseek", "deepseek"],
 ```
